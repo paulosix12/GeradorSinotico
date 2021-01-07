@@ -1,0 +1,232 @@
+<html>
+<body>
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <div class="container">
+        <canvas id="myCanvas" width="1364" height="814" style="border:1px solid #000000;"></canvas>
+    </div>
+    <div class="container">
+    </br>
+        <div class="btn-group" role="group" aria-label="Basic example">
+            <button type="button" onclick="addNewRect()" class="btn btn-primary">Adicionar</button>
+            <button type="button" onclick="clearRects()" class="btn btn-primary">Limpar ultima estação</button>
+            <button type="button" onclick="clipBoard()" class="btn btn-primary">Copiar XML</button>
+        </div>
+    </br>
+    <pre><textarea id="xml" class="form-control" rows="5" cols="5"></textarea></pre>
+</div>
+
+</body>
+
+<style>
+    #myCanvas{
+        background-image:    url(img.jpg);
+        background-size:     cover;                      
+        background-repeat:   no-repeat;
+        background-position: center center;
+    }
+</style>
+
+<script type="text/javascript">
+var canvas = document.getElementById("myCanvas");
+var ctx = canvas.getContext("2d");
+
+
+// //Write position X and Y in screen
+// canvas.addEventListener('mousemove', function(evt) {
+//         var mousePos = getMousePos(canvas, evt);
+//         var message = 'Mouse position: X ' + mousePos.x + ', Y' + mousePos.y;
+//         console.log(message);
+//         writeMessage(canvas, message);
+//       }, false);
+
+// function getMousePos(canvas, evt) {
+//     var rect = canvas.getBoundingClientRect();
+//         return {
+//           x: evt.clientX - rect.left,
+//           y: evt.clientY - rect.top
+//         };
+// }
+
+function writeMessage(canvas, message) {
+    ctx.font = '18pt Calibri';
+    ctx.fillStyle = 'white';
+    ctx.fillText(message, 10, 25);
+} 
+
+var BoundingCanvas = canvas.getBoundingClientRect();
+
+var offsetX = BoundingCanvas.left;
+var offsetY = BoundingCanvas.top;
+var WIDTH = canvas.width;
+var HEIGHT = canvas.height;
+
+var dragok = false;
+var startX;
+var startY;
+
+var rects = [];
+
+canvas.onmousedown = myDown;
+canvas.onmouseup = myUp;
+canvas.onmousemove = myMove;
+
+draw();
+
+function compilaXML(){
+    var carros = "";
+    for (var i = 0; i < rects.length; i++) {
+        //console.log(rects[i]); debug in terminal
+
+        var posicaoX = rects[i].x + 15;  //Set middle of rect in XML
+        var posicaoY = rects[i].y +  4;  //Set middle of rect in XML
+
+
+        var carro = "<Carros>\n<Estacao></Estacao>\n<PosicaoX>" + posicaoX + "</PosicaoX>\n<PosicaoY>" + posicaoY + "</PosicaoY>\n<Width>28</Width>\n<Height>28</Height>\n<Invertido>1</Invertido>\n<FontName>Tahoma</FontName>\n<FontSize>62.25</FontSize>\n</Carros>\n"
+        carros = carros + carro;
+    }
+
+    
+    document.getElementById("xml").innerText = carros;
+}
+
+function clipBoard(){
+    var copyText = document.getElementById("xml");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999)
+    document.execCommand("copy");
+    alert("Texto copiado para area de transferencia");
+
+}
+
+function clearRects(){
+    confirm("Tem certeza que deseja apagar todos os retangulos ?");
+    for (var i = 0; i < rects.length; i++) {
+        rects.pop();
+        draw();
+    }
+}
+
+//Draw rect with the parameters
+function rect(x, y, w, h) {
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.closePath();
+    ctx.fill();
+}
+
+function addNewRect(){
+    rects.push({
+    x: 60 - 25,
+    y: 50 - 25,
+    width: 30,
+    height: 30,
+    fill: "#ff550d",
+    isDragging: false
+});
+}
+
+// clear the canvas
+function clear() {
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+}
+
+setInterval(function(){ 
+    draw();
+    compilaXML();
+
+ }, 1000);
+
+// redraw the scene
+function draw() {
+    clear();
+    ctx.fillStyle = 'rgba(0,0,0,0)'; // Transparente Background in canvas
+    rect(0, 0, WIDTH, HEIGHT);
+    for (var i = 0; i < rects.length; i++) {
+        var r = rects[i];
+        ctx.fillStyle = r.fill;
+        rect(r.x, r.y, r.width, r.height);
+    }
+}
+
+
+function myDown(e) {
+
+    // tell the browser we're handling this mouse event
+    e.preventDefault();
+    e.stopPropagation();
+
+    // get the current mouse position
+    var mx = parseInt(e.clientX - offsetX);
+    var my = parseInt(e.clientY - offsetY);
+
+    // test each rect to see if mouse is inside
+    dragok = false;
+    for (var i = 0; i < rects.length; i++) {
+        var r = rects[i];
+        if (mx > r.x && mx < r.x + r.width && my > r.y && my < r.y + r.height) {
+            dragok = true;
+            r.isDragging = true;
+        }
+    }
+    // save the current mouse position
+    startX = mx;
+    startY = my;
+}
+
+
+// handle mouseup events
+function myUp(e) {  
+    // tell the browser we re handling this mouse event
+    e.preventDefault();
+    e.stopPropagation();
+
+    // clear all the dragging flags
+    dragok = false;
+    for (var i = 0; i < rects.length; i++) {
+            rects[i].isDragging = false;
+    }
+}
+
+
+// handle mouse moves
+function myMove(e) {
+    // if we're dragging anything...
+    if (dragok) {
+
+        // tell the browser we're handling this mouse event
+        e.preventDefault();
+        e.stopPropagation();
+
+        // get the current mouse position
+        var mx = parseInt(e.clientX - offsetX);
+        var my = parseInt(e.clientY - offsetY);
+
+        // calculate the distance the mouse has moved
+        // since the last mousemove
+        var dx = mx - startX;
+        var dy = my - startY;
+
+        // move each rect that isDragging 
+        // by the distance the mouse has moved
+        // since the last mousemove
+        for (var i = 0; i < rects.length; i++) {
+            var r = rects[i];
+            if (r.isDragging) {
+                r.x += dx;
+                r.y += dy;
+            }
+        }
+
+        // redraw the scene with the new rect positions
+        draw();
+
+        // reset the starting mouse position for the next mousemove
+        startX = mx;
+        startY = my;
+
+    }
+}
+</script>
+
+</html>
